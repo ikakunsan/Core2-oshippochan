@@ -55,9 +55,11 @@ pan_max = 77        # limit in degree
 pan_center = 90 + offset_pan
 pan_current = 0
 pan_target = pan_current
-tilt_center = 90 + offset_tilt
+pan_actions = []
+tilt_center = 80 + offset_tilt
 tilt_current = 0
 tilt_target = tilt_current
+tilt_actions = []
 
 tail_center = 90 + offset_tail
 tail_swing_max = 10
@@ -72,54 +74,68 @@ spf_ms = 1000
 word_items = ["動物", "歴史", "食べ物", "科学",]
 #####
 
+##### Others
+pressed_button_A = False
+pressed_button_B = False
+pressed_button_C = False
+#####
+
+
 def buttonA_wasPressed():
     global tail_furifuri_ms, tail_swing_max
     global spf_ms, tail_furifuri_ms
+    global tilt_target, pan_target
+    global pressed_button_A
 
-#    lcd.print('Button A Pressed', 0, 20, 0xffffff)
-    # tail_swing_max = 10
-    tail_swing_max = random.uniform(8.5, 12)
-    # spf_ms = 1200
-    spf_ms = random.randint(800, 1200)
-    tail_furifuri_ms = 4800
-    
-    tilt_target = 30
-    time.sleep_ms(wait_tilt_ms())
-    tilt_target = -5
-    time.sleep_ms(wait_tilt_ms())
-    tilt_target = 30
-    time.sleep_ms(wait_tilt_ms())
-    tilt_target = -5
-    time.sleep_ms(wait_tilt_ms())
-    tilt_target = 0
+    lcd.print('Button A Pressed', 0, 20, 0xffbbff)
+    time.sleep(1)
+    lcd.print('Button A Pressed', 0, 20, 0x000000)
+
+    pressed_button_A = True
 
 
 def buttonB_wasPressed():
     global tail_furifuri_ms, tail_swing_max
     global spf_ms, tail_furifuri_ms
+    global tilt_target, pan_target
+    global tilt_actions
+    global pressed_button_B
 
-#    lcd.print('Button B Pressed', 0, 40, 0xffbbff)
-    # call OpenAI API and Google API, and speak something
-    gpt_message_item = word_items[random.randrange(len(word_items))]
-    print(gpt_message_item)
-    gpt_message_content = gpt_message_item + "にちなんだ、うんちく話をして。60文字以内でお願い。"
+    lcd.print('Button B Pressed', 0, 40, 0xffbbff)
+    time.sleep(1)
+    lcd.print('Button B Pressed', 0, 40, 0x000000)
 
-    # アクションをとって考えてるフリ
-    tail_swing_max = 10
-    spf_ms = 1200
-    tail_furifuri_ms = 10000
-
-    print('Sending request to OpenAI API')
-    r = request_gpt(gpt_message_content)
-    print('Return from OpenAI API')
-    print('Converting data to audio file...')
-    get_wavfile(r)
-    speaker.playWAV('/sd/response.wav')
+    pressed_button_B = True
 
 
 def buttonC_wasPressed():
-#    lcd.print('Button A Pressed', 0, 20, 0x000000)
-    # call OpenAI API and Google API, and speak something
+    global tilt_target, pan_target
+    global tilt_actions
+    global pressed_button_C
+
+    lcd.print('Button C Pressed', 0, 60, 0xffbbff)
+    time.sleep(1)
+    lcd.print('Button C Pressed', 0, 60, 0x000000)
+
+    pressed_button_C = True
+
+
+def buttonA_handler():
+    global tail_furifuri_ms, tail_swing_max
+    global spf_ms, tail_furifuri_ms
+    global tilt_target, pan_target
+    global tilt_actions
+
+    # tail_swing_max = 10
+    tail_swing_max = random.uniform(8.5, 12)
+    # spf_ms = 1200
+    spf_ms = random.randint(800, 1200)
+    tail_furifuri_ms = 4800
+
+    tilt_actions.clear()
+    tilt_actions = [30, -5, 30, -5, 30, 0]
+    do_actions()
+    '''
     tilt_target = 30
     time.sleep_ms(wait_tilt_ms())
     tilt_target = -5
@@ -130,8 +146,47 @@ def buttonC_wasPressed():
     time.sleep_ms(wait_tilt_ms())
     tilt_target = 0
     pass
+    '''
 
-#btnC.wasPressed(buttonC_wasPressed)
+
+def buttonB_hander():
+    global tail_furifuri_ms, tail_swing_max
+    global spf_ms, tail_furifuri_ms
+    global tilt_target, pan_target
+    global tilt_actions
+
+    tilt_actions.clear()
+    tilt_actions = [30, -5, 30, -5, 30, 0]
+    do_actions()
+    pass
+
+
+def buttonC_hander():
+    global tail_furifuri_ms, tail_swing_max
+    global spf_ms, tail_furifuri_ms
+    global tilt_target, pan_target
+
+    tail_swing_max = random.uniform(8.5, 12)
+    spf_ms = random.randint(800, 1200)
+    tail_furifuri_ms = 4800
+
+    # call OpenAI API and Google API, and speak something
+
+    gpt_message_item = word_items[random.randrange(len(word_items))]
+    print(word_items)
+    print(random.randrange(len(word_items)))
+    print(gpt_message_item)
+    gpt_message_content = gpt_message_item + "にちなんだ、うんちく話をして。60文字以内でお願い。"
+
+    print('Sending request to OpenAI API')
+    r = request_gpt(gpt_message_content)
+    print(len(r))
+    print('Got response from OpenAI API')
+    print('Converting text data to audio file...')
+    get_wavfile(r)
+    speaker.playWAV('/sd/response.wav')
+    pass
+
 
 def wink():
     # to be implemented
@@ -161,11 +216,22 @@ def wait_pan_ms():
     return int(abs(pan_target-pan_current) / pan_step * servo_cycle_ms)
 
 
-def actions(timer):
+def do_actions():
+    global tilt_actions, pan_actions
+    global tilt_target, pan_target
+
+    for i in range(len(tilt_actions)):
+        tilt_target = tilt_actions[i]
+        time.sleep_ms(wait_tilt_ms())
+    for i in range(len(pan_actions)):
+        tilt_target = pan_actions[i]
+        time.sleep_ms(wait_tilt_ms())
     pass
 
 
-def servo_move(timer):
+@timerSch.event('timer1')
+def ttimer1():
+#def servo_move(timer):
     global tail_furifuri_ms
     global tail_pos
     global tail_right
@@ -222,8 +288,6 @@ def request_gpt(input_text):
     req_headers["Content-Type"] = "application/json"
     req_headers["Authorization"] = "Bearer " + OpenAI_API_key
 
-    print('011')
-
     gpt_message_content = input_text
 
     gpt_send_data = {
@@ -236,11 +300,10 @@ def request_gpt(input_text):
         "max_tokens": 500,
     }
 
-    print('012')
-
     req_data = ujson.dumps(gpt_send_data)
     req_data = req_data.encode()
 
+    print("Post data")
     try:
         res = requests.post(
             url=req_url,
@@ -253,7 +316,7 @@ def request_gpt(input_text):
         r = d['choices'][0]['message']['content']
         res.close()
     except:
-        print("Failed to contact to OpenAI server. Maybe not connected to the Internet")
+        print("Failed to connect to OpenAI server. Maybe not connected to the Internet")
         r = ""
     
     return r
@@ -321,6 +384,27 @@ def get_wavfile(input_text):
     res.close()
 
 
+def junbi_taiso():
+    global tail_furifuri_ms, tail_swing_max
+    global spf_ms, tail_furifuri_ms
+    global tilt_target, pan_target
+
+    # 電源投入後の準備運動 B-)
+    pan_target = 30
+    time.sleep_ms(wait_pan_ms())
+    pan_target = -30
+    time.sleep_ms(wait_pan_ms())
+    pan_target = 0
+    time.sleep_ms(wait_pan_ms())
+    tilt_target = 30
+    time.sleep_ms(wait_tilt_ms())
+    tilt_target = -5
+    time.sleep_ms(wait_tilt_ms())
+    tilt_target = 0
+    time.sleep_ms(wait_tilt_ms())
+    time.sleep(1)
+
+
 
 if __name__ == "__main__":
 
@@ -348,21 +432,29 @@ if __name__ == "__main__":
     lcd.print("WiFi connecting...", 100, 5, 0x00ffff)
     time_start = time.ticks_ms()
     time_expire = time.ticks_add(time_start, wifi_timeout*1000)
+    
     nowtime = time_start
     eyes_offset_x = 15
     eyes_offset_y = -20
     lcd.circle(int(160-eyes_w), eyes_y, 9, 0x000000, 0x000000)
     lcd.circle(int(160+eyes_w), eyes_y, 9, 0x000000, 0x000000)
+    lcd.triangle(int(160-mouth_w), mouth_y, int(160+mouth_w), mouth_y, 160, mouth_y+15, 0xffffff, 0xffffff)
+    
     while (not wlan.isconnected()) and (time.ticks_diff(time_expire, nowtime) > 0):
         print(eyes_offset_x)
 #        if eyes_offset_x > 0:
         eyes_offset_x = 0 - eyes_offset_x
-        lcd.circle(int(160-eyes_w+eyes_offset_x), eyes_y+eyes_offset_y, 9, 0xffffff, 0xffffff)
-        lcd.circle(int(160+eyes_w+eyes_offset_x), eyes_y+eyes_offset_y, 9, 0xffffff, 0xffffff)
+        eye_l_x = int(160-eyes_w+eyes_offset_x)
+        eye_r_x = int(160+eyes_w+eyes_offset_x)
+        eye_l_y = eyes_y+eyes_offset_y
+        eye_r_y = eyes_y+eyes_offset_y
+        
+        lcd.circle(eye_l_x, eye_l_y, 9, 0xffffff, 0xffffff)
+        lcd.circle(eye_r_x, eye_r_y, 9, 0xffffff, 0xffffff)
         time.sleep(2)
         nowtime = time.ticks_ms()
-        lcd.circle(int(160-eyes_w+eyes_offset_x), eyes_y+eyes_offset_y, 9, 0x000000, 0x000000)
-        lcd.circle(int(160+eyes_w+eyes_offset_x), eyes_y+eyes_offset_y, 9, 0x000000, 0x000000)
+        lcd.circle(eye_l_x, eye_l_y, 9, 0x000000, 0x000000)
+        lcd.circle(eye_r_x, eye_r_y, 9, 0x000000, 0x000000)
 
     lcd.print("WiFi connecting...", 100, 5, 0x000000)   # 前に書いたの消すよ
     if time.ticks_diff(time_expire, nowtime) > 0:
@@ -370,16 +462,28 @@ if __name__ == "__main__":
         rtc.settime('ntp', host=my_ntp_server, tzone=9)
         word_items.append(str(rtc.datetime()[1])+"月"+str(rtc.datetime()[2])+"日")
     else:
+#        lcd.circle(eye_l_x, eye_l_y, 9, 0xffffff, 0xffffff)
+#        lcd.circle(eye_r_x, eye_r_y, 9, 0xffffff, 0xffffff)
+        lcd.circle(eye_l_x, eye_l_y, 9, 0x000000, 0x000000)
+        lcd.circle(eye_r_x, eye_r_y, 9, 0x000000, 0x000000)
+        lcd.line(eye_l_x-9, eye_l_y-9, eye_l_x+9, eye_l_y, 0xffffff)
+        lcd.line(eye_l_x-9, eye_l_y+9, eye_l_x+9, eye_l_y, 0xffffff)
+        lcd.line(eye_r_x+9, eye_r_y-9, eye_r_x-9, eye_r_y, 0xffffff)
+        lcd.line(eye_r_x+9, eye_r_y+9, eye_r_x-9, eye_r_y, 0xffffff)
         speaker.playWAV('res/wifierror.wav')
+        lcd.line(eye_l_x-9, eye_l_y-9, eye_l_x+9, eye_l_y, 0x000000)
+        lcd.line(eye_l_x-9, eye_l_y+9, eye_l_x+9, eye_l_y, 0x000000)
+        lcd.line(eye_r_x+9, eye_r_y-9, eye_r_x-9, eye_r_y, 0x000000)
+        lcd.line(eye_r_x+9, eye_r_y+9, eye_r_x-9, eye_r_y, 0x000000)
 
     lcd.circle(int(160-eyes_w), eyes_y, 9, 0xffffff, 0xffffff)
     lcd.circle(int(160+eyes_w), eyes_y, 9, 0xffffff, 0xffffff)
     lcd.triangle(int(160-mouth_w), mouth_y, int(160+mouth_w), mouth_y, 160, mouth_y+15, 0xffffff, 0xffffff)
 
     btnA.wasPressed(buttonA_wasPressed)
+    btnB.wasPressed(buttonB_wasPressed)
     if wifi_connected:
-        btnB.wasPressed(buttonB_wasPressed)
-    btnC.wasPressed(buttonC_wasPressed)
+        btnC.wasPressed(buttonC_wasPressed)
 
     pin_pan = Pin(gpio_pan)
     pin_tilt = Pin(gpio_tilt)
@@ -394,31 +498,43 @@ if __name__ == "__main__":
 
     ### Note that Timer(-3) is used by the system
     # TODO: faceTimer = Timer()
-    servoTimer = Timer(-1)
-    servoTimer.init(mode=Timer.PERIODIC, period=servo_cycle_ms, callback=servo_move)
-    actionTimer = Timer(-2)
-    actionTimer.init(mode=Timer.PERIODIC, period=1000*60, callback=actions)
+#    servoTimer = Timer(-5)
+#    servoTimer.init(mode=Timer.PERIODIC, period=servo_cycle_ms, callback=servo_move)
+#    actionTimer = Timer(-2)
+#    actionTimer.init(mode=Timer.PERIODIC, period=1000*60, callback=actions)
+    timerSch.run("timer1", servo_cycle_ms, 0x00)
     
+    junbi_taiso()
 
-    # 電源投入後の準備運動 B-)
-    pan_target = 30
-    time.sleep_ms(wait_pan_ms())
-    pan_target = -30
-    time.sleep_ms(wait_pan_ms())
-    pan_target = 0
-    time.sleep_ms(wait_pan_ms())
-    tilt_target = 30
-    time.sleep_ms(wait_tilt_ms())
-    tilt_target = -5
-    time.sleep_ms(wait_tilt_ms())
-    tilt_target = 0
-    time.sleep_ms(wait_tilt_ms())
-    time.sleep(1)
     tail_right = True
     tail_pos = 7.5
     tail_swing_max = 10
     spf_ms = 1200
-    tail_furifuri_ms = 4800
-    time.sleep(5)
+    tail_furifuri_ms = 3000
+    # time.sleep(30)
+
+    timeout = 60   # seconds for timeout
+    time_start = time.ticks_ms()
+    time_expire = time.ticks_add(time_start, timeout*1000)
+    nowtime = time_start
+    while time.ticks_diff(time_expire, nowtime) > 0:
+        print(time.ticks_diff(time_expire, nowtime))
+        if pressed_button_A:
+            print("Button A was pressed")
+            pressed_button_A = False
+            buttonA_handler()
+            pass
+        elif pressed_button_B:
+            print("Button B was pressed")
+            pressed_button_B = False
+            buttonB_hander()
+            pass
+        elif pressed_button_C:
+            print("Button C was pressed")
+            pressed_button_C = False
+            buttonC_hander()
+        nowtime = time.ticks_ms()
+    print('*************************************************************')    
 
 #    servoTimer.deinit()
+    timerSch.stop("timer1")
