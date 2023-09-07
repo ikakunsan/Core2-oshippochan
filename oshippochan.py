@@ -26,6 +26,7 @@ except:
 #####
 
 ##### Face parts ;-) (tentative, to be updated)
+eye_r = 9       # size
 eyes_w = 90 / 2
 eyes_y = 110
 mouth_w = 40 / 2
@@ -49,7 +50,7 @@ servo_duty_max = 12.5  # 180 degree
 #####
 
 ##### Servo related settings
-tilt_step = 30 / 1000 * servo_cycle_ms  # degree per step
+tilt_step = 45 / 1000 * servo_cycle_ms  # degree per step
 tilt_max_up = 41  # limit in degree, depends on hardware
 tilt_max_down = 6  # limit in degree, depends on hardware
 pan_step = 45 / 1000 * servo_cycle_ms  # degree per step
@@ -97,7 +98,10 @@ pressed_button_C = False
 # sound_path = "res/"
 sound_path = "/sd/sound/"
 
-idle_cycle_ms = 1000
+idle_detection_cycle_ms = 1000
+idle_detection = 15 * 60    # seconds
+idle_action_cycle_ms = 1000
+#idle_action_interval = 10 * 60   # seconds
 idle_action_interval = 10 * 60   # seconds
 idle_actions_time_next = 0      # seconds
 idle_actions_time_current = 0
@@ -147,20 +151,30 @@ def buttonC_wasPressed():
 def buttonA_handler():
     global tail_furifuri_ms, tail_swing_max
     global spf_ms, tail_furifuri_ms
-    global tilt_target, pan_target
-    global tilt_actions
+    global tilt_target, tilt_actions
+    global pan_target, pan_actions
     global idle_actions_time_next
 
-    idle_actions_time_next = time.ticks_add(idle_actions_time_next, 5*60*1000)
+    idle_actions_time_next = time.ticks_add(idle_actions_time_next, idle_action_interval*1000)
+    
+    draw_eyes(0, 0, 0, lcd.WHITE, size=13)
+    time.sleep_ms(300)
+    draw_eyes(0, 0, 0, lcd.WHITE)
+    time.sleep_ms(300)
+    draw_eyes(2, 0, 0, lcd.WHITE)
     # tail_swing_max = 10
     tail_swing_max = random.uniform(8.5, 12)
     # spf_ms = 1200
     spf_ms = random.randint(800, 1200)
-    tail_furifuri_ms = 4800
+    tail_furifuri_ms = 6000
+
+    pan_actions.clear()
+    pan_actions = [-20, 20, 0]
 
     tilt_actions.clear()
     tilt_actions = [30, -5, 30, -5, 30, 0]
     do_actions()
+    draw_eyes(0, 0, 0, lcd.WHITE)
 
 
 def buttonB_hander():
@@ -170,7 +184,7 @@ def buttonB_hander():
     global tilt_actions
     global idle_actions_time_next
 
-    idle_actions_time_next = time.ticks_add(idle_actions_time_next, 5*60*1000)
+    idle_actions_time_next = time.ticks_add(idle_actions_time_next, idle_action_interval*1000)
     tilt_actions.clear()
     tilt_actions = [30, -5, 30, -5, 30, 0]
     do_actions()
@@ -185,12 +199,17 @@ def buttonC_hander():
     global idle_actions
     global idle_actions_time_next
 
-    idle_actions_time_next = time.ticks_add(idle_actions_time_next, 5*60*1000)
+    idle_actions_time_next = time.ticks_add(idle_actions_time_next, idle_action_interval*1000)
+    
     tail_swing_max = random.uniform(8.5, 12)
     spf_ms = random.randint(800, 1200)
     tail_furifuri_ms = 4800
     mouth_mode = 0
     
+    draw_eyes(0, 0, 0, lcd.WHITE, size=13)
+    time.sleep_ms(300)
+    draw_eyes(0, 0, 0, lcd.WHITE)
+
     timerSch.run("timer_Mouth", mouth_cycle_ms, 0x00)
     speaker.playWAV(sound_path + "haai.wav")
     timerSch.stop("timer_Mouth")
@@ -214,32 +233,36 @@ def buttonC_hander():
     print("Got response from OpenAI API")
     print("Converting text data to audio file...")
     
+    draw_eyes(2, 0, 0, lcd.WHITE)
     timerSch.run("timer_Mouth", mouth_cycle_ms, 0x00)
     speaker.playWAV(sound_path + "chottomatte.wav")
     timerSch.stop("timer_Mouth")
     
+    draw_eyes(0, 0, 0, lcd.WHITE)
     draw_mouth(1, lcd.WHITE)
     get_wavfile(r)
     mouth_mode = 0
     timerSch.run("timer_Mouth", mouth_cycle_ms, 0x00)
     speaker.playWAV("/sd/response.wav")
     timerSch.stop("timer_Mouth")
+
     draw_mouth(0, lcd.WHITE)
 
 
 def idle_action_handler():
     pass
 
-def draw_eyes(style, offset_x, offset_y, color):
-    global eyes_w, eyes_y
+def draw_eyes(style, offset_x, offset_y, color, size=eye_r):
+    global eyes_w, eyes_y, eye_r
 
+    eyesize = size
     print("drawing eyes")
-    print(style, eyes_w, eyes_y, color)
+    print(style, eyes_w, eyes_y, eyesize, color)
     if style == 0:  # Opened eye
         print("opened eye")
         #        eye_l_x = int(160-eyes_w+offset_x)
         eye_l_x = int(160 - eyes_w - offset_x)
-        eye_r_x = int(160 + eyes_w + offset_x)
+        eye_r_x = int(160 + eyes_w - offset_x)
         eye_l_y = eyes_y + offset_y
         eye_r_y = eyes_y + offset_y
         lcd.rect(
@@ -251,8 +274,8 @@ def draw_eyes(style, offset_x, offset_y, color):
             lcd.BLACK,
         )
         #        lcd.rect(int(160-eyes_w-25), int(eyes_y-40) , int(eyes_w*2+50), 60, lcd.BLUE)
-        lcd.circle(eye_l_x, eye_l_y, 9, color, color)
-        lcd.circle(eye_r_x, eye_r_y, 9, color, color)
+        lcd.circle(eye_l_x, eye_l_y, eyesize, color, color)
+        lcd.circle(eye_r_x, eye_r_y, eyesize, color, color)
     elif style == 1:  # Closed eye
         lcd.rect(
             int(160 - eyes_w - 25),
@@ -262,8 +285,8 @@ def draw_eyes(style, offset_x, offset_y, color):
             lcd.BLACK,
             lcd.BLACK,
         )
-        lcd.line(int(eye_l_x - 9), eye_l_y, eye_l_x + 9, eye_l_y, color)
-        lcd.line(int(eye_l_x - 9), eye_l_y, eye_l_x + 9, eye_l_y, color)
+        lcd.line(int(eye_l_x - eye_r), eye_l_y, eye_l_x + eyesize, eye_l_y, color)
+        lcd.line(int(eye_l_x - eye_r), eye_l_y, eye_l_x + eyesize, eye_l_y, color)
     elif style == 2:  # Puzzled eye
         lcd.rect(
             int(160 - eyes_w - 25),
@@ -274,17 +297,41 @@ def draw_eyes(style, offset_x, offset_y, color):
             lcd.BLACK,
         )
         lcd.line(
-            int(160 - eyes_w - 9), int(eyes_y - 9), int(160 - eyes_w + 9), eyes_y, color
+            int(160 - eyes_w - eye_r), int(eyes_y - eye_r), int(160 - eyes_w + eye_r), eyes_y, color
         )
         lcd.line(
-            int(160 - eyes_w - 9), int(eyes_y + 9), int(160 - eyes_w + 9), eyes_y, color
+            int(160 - eyes_w - eye_r), int(eyes_y + eye_r), int(160 - eyes_w + eye_r), eyes_y, color
         )
         lcd.line(
-            int(160 + eyes_w + 9), int(eyes_y - 9), int(160 + eyes_w - 9), eyes_y, color
+            int(160 + eyes_w + eye_r), int(eyes_y - eye_r), int(160 + eyes_w - eye_r), eyes_y, color
         )
         lcd.line(
-            int(160 + eyes_w + 9), int(eyes_y + 9), int(160 + eyes_w - 9), eyes_y, color
+            int(160 + eyes_w + eye_r), int(eyes_y + eye_r), int(160 + eyes_w - eye_r), eyes_y, color
         )
+    elif style == 2:  # Cross eyes
+        lcd.rect(
+            int(160 - eyes_w - 25),
+            int(eyes_y - 40),
+            int(eyes_w * 2 + 50),
+            60,
+            lcd.BLACK,
+            lcd.BLACK,
+        )
+        lcd.line(
+            int(160 - eyes_w - eye_r), int(eyes_y - eye_r), int(160 - eyes_w + eye_r), int(eyes_y + eye_r), color
+        )
+        lcd.line(
+            int(160 - eyes_w - eye_r), int(eyes_y + eye_r), int(160 - eyes_w + eye_r), int(eyes_y - eye_r), color
+        )
+        lcd.line(
+            int(160 + eyes_w + eye_r), int(eyes_y - eye_r), int(160 + eyes_w - eye_r), int(eyes_y + eye_r), color
+        )
+        lcd.line(
+            int(160 + eyes_w + eye_r), int(eyes_y + eye_r), int(160 + eyes_w - eye_r), int(eyes_y - eye_r), color
+        )
+
+
+
 
 
 def draw_mouth(style, color):  # 0:opened, 1:closeed, 2:surprised, 3:angry
@@ -351,8 +398,8 @@ def do_actions():
         tilt_target = tilt_actions[i]
         time.sleep_ms(wait_tilt_ms())
     for i in range(len(pan_actions)):
-        tilt_target = pan_actions[i]
-        time.sleep_ms(wait_tilt_ms())
+        pan_target = pan_actions[i]
+        time.sleep_ms(wait_pan_ms())
     pass
 
 
@@ -545,6 +592,15 @@ def ttimer_Mouth():
         draw_mouth(1, lcd.WHITE)
         mouth_status = 0
 
+
+# アイドル検出
+@timerSch.event("timer_IdleCheck")
+def ttimer_IdleCheck():
+    global idle_action_interval, idle_actions_time_next
+    global tail_swing_max, tail_furifuri_ms, spf_ms
+    
+
+
 # アイドル時のランダムな動き
 @timerSch.event("timer_IdleAction")
 def ttimer_IdleAction():
@@ -554,8 +610,9 @@ def ttimer_IdleAction():
     if time.ticks_diff(time.ticks_ms(), idle_actions_time_next) >= 0:
         print("### idle event")
         tail_swing_max = random.uniform(8.5, 12)
-        spf_ms = random.randint(1200, 1800)
-        tail_furifuri_ms = random.randint(1000, 2000)
+        spf_ms = random.randint(1200, 2000)
+        tail_furifuri_ms = random.randint(1800, 3500)
+        time.sleep_ms(4000)
         idle_actions_time_next = time.ticks_add(time.ticks_ms(), idle_action_interval*1000)
 
 
@@ -620,7 +677,7 @@ if __name__ == "__main__":
         rtc.settime("ntp", host=my_ntp_server, tzone=9)
         word_items.append(str(rtc.datetime()[1]) + "月" + str(rtc.datetime()[2]) + "日")
     else:
-        draw_eyes(2, 0, 0, lcd.WHITE)
+        draw_eyes(3, 0, 0, lcd.WHITE)
         mouth_mode = 0
         timerSch.run("timer_Mouth", mouth_cycle_ms, 0x00)
         speaker.playWAV(sound_path + "wifierror.wav")
@@ -651,11 +708,11 @@ if __name__ == "__main__":
     # timerSch.run("timer_Mouth", mouth_cycle_ms, 0x00)
     idle_actions_time_current = time.ticks_ms()
     idle_actions_time_next = time.ticks_add(idle_actions_time_current, idle_action_interval*1000)
-    timerSch.run("timer_IdleAction", idle_cycle_ms, 0x00)
+    timerSch.run("timer_IdleAction", idle_action_cycle_ms, 0x00)
 
     junbi_taiso()
 
-    timerSch.run("timer_IdleAction", idle_cycle_ms, 0x00)
+    timerSch.run("timer_IdleAction", idle_action_cycle_ms, 0x00)
     tail_right = True
     tail_pos = 7.5
     tail_swing_max = 10
@@ -690,4 +747,6 @@ if __name__ == "__main__":
     #    servoTimer.deinit()
     timerSch.stop("timer_Servo")
     timerSch.stop("timer_Mouth")
+    timerSch.stop("timer_IdleCheck")
     timerSch.stop("timer_IdleAction")
+    
