@@ -172,7 +172,7 @@ def buttonA_handler():
     pan_actions = [-20, 20, 0]
 
     tilt_actions.clear()
-    tilt_actions = [30, -5, 30, -5, 30, 0]
+    tilt_actions = [30, -15, 30, -15, 30, 0]
     do_actions()
     draw_eyes(0, 0, 0, lcd.WHITE)
 
@@ -186,7 +186,7 @@ def buttonB_hander():
 
     idle_actions_time_next = time.ticks_add(idle_actions_time_next, idle_action_interval*1000)
     tilt_actions.clear()
-    tilt_actions = [30, -5, 30, -5, 30, 0]
+    tilt_actions = [30, -15, 30, -15, 30, 0]
     do_actions()
     pass
 
@@ -216,12 +216,18 @@ def buttonC_hander():
     
     draw_mouth(1, lcd.WHITE)
     tilt_actions.clear()
-    tilt_actions = [35, -5, 0]
+    tilt_actions = [25, -5, 0]
     do_actions()
 
     # call OpenAI API and Google API, and speak something
 
-    gpt_message_item = word_items[random.randrange(len(word_items))]
+    item_num = random.randrange(len(word_items) + 1)
+    if item_num < len(word_items):
+        gpt_message_item = word_items[item_num]
+    else:
+        gpt_message_item = str(rtc.datetime()[1]) + "月" + str(rtc.datetime()[2]) + "日"
+
+    # word_items.append(str(rtc.datetime()[1]) + "月" + str(rtc.datetime()[2]) + "日")
     # print(word_items)
     # print(random.randrange(len(word_items)))
     # print(gpt_message_item)
@@ -331,9 +337,6 @@ def draw_eyes(style, offset_x, offset_y, color, size=eye_r):
         )
 
 
-
-
-
 def draw_mouth(style, color):  # 0:opened, 1:closeed, 2:surprised, 3:angry
     global mouth_w, mouth_y
 
@@ -381,7 +384,7 @@ def degree_to_pwm(degree):
 def wait_tilt_ms():
     global tilt_target, tilt_current, tilt_step, servo_cycle_ms
 
-    return int(abs(tilt_target - tilt_current) / tilt_step * servo_cycle_ms)
+    return int(abs(tilt_target - tilt_current) / tilt_step * servo_cycle_ms +500)
 
 
 def wait_pan_ms():
@@ -675,7 +678,7 @@ if __name__ == "__main__":
     if time.ticks_diff(time_expire, nowtime) > 0:
         wifi_connected = True
         rtc.settime("ntp", host=my_ntp_server, tzone=9)
-        word_items.append(str(rtc.datetime()[1]) + "月" + str(rtc.datetime()[2]) + "日")
+#        word_items.append(str(rtc.datetime()[1]) + "月" + str(rtc.datetime()[2]) + "日")
     else:
         draw_eyes(3, 0, 0, lcd.WHITE)
         mouth_mode = 0
